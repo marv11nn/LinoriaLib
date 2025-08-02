@@ -49,9 +49,8 @@ local Library = {
     LoadingAssets = {};
 };
 
+-- Loading Screen Functions
 local LoadingUtility = {};
-local DrawingUtility = {}
-local Drawings = {}
 
 function LoadingUtility.AddInstance(NewInstance, Properties)
     local Instance = Instance.new(NewInstance)
@@ -61,11 +60,10 @@ function LoadingUtility.AddInstance(NewInstance, Properties)
     return Instance
 end
 
-function LoadingUtility.MiddlePos(WindowSize)
-    local ViewportSize = workspace.CurrentCamera.ViewportSize
+function LoadingUtility.MiddlePos(Instance)
     return UDim2.fromOffset(
-        (ViewportSize.X / 2) - (WindowSize.X / 2), 
-        (ViewportSize.Y / 2) - (WindowSize.Y / 2)
+        (workspace.CurrentCamera.ViewportSize.X / 2) - (Instance.Size.X.Offset / 2), 
+        (workspace.CurrentCamera.ViewportSize.Y / 2) - (Instance.Size.Y.Offset / 2)
     )
 end
 
@@ -81,105 +79,19 @@ function LoadingUtility.AddFolder(GetFolder)
     end
 end
 
-function DrawingUtility.AddDrawing(Instance, Properties)
-    local InstanceType = Instance
-    local Instance = Drawing.new(Instance)
-    
-    for Index, Value in pairs(Properties) do
-        Instance[Index] = Value
-        if InstanceType == "Text" then
-            if Index == "Font" then
-                Instance.Font = Drawing.Fonts.Plex
-            end
-            if Index == "Size" then
-                Instance.Size = 13
-            end
-        end
-    end
-    
-    if Properties.ZIndex ~= nil then
-        Instance.ZIndex = Properties.ZIndex + 20
-    else
-        Instance.ZIndex = 20
-    end
-    
-    Drawings[#Drawings + 1] = {Instance}
-    return Instance
-end
-
-function DrawingUtility.RemoveDrawing(Instance)
-    local SpecificDrawing = 0
-    for Index, Value in pairs(Drawings) do 
-        if Value[1] == Instance then
-            if Value[1] then
-                Value[1]:Remove()
-            end
-            if Value[2] then
-                Value[2] = nil
-            end
-            SpecificDrawing = Index
-        end
-    end
-    if Drawings[SpecificDrawing] then
-        table.remove(Drawings, table.find(Drawings, Drawings[SpecificDrawing]))
-    end
-end
-
-function DrawingUtility.MiddlePos(Instance)
-    local Camera = workspace.CurrentCamera
-    return Vector2.new(
-        (Camera.ViewportSize.X / 2) - (Instance.Size.X / 2), 
-        (Camera.ViewportSize.Y / 2) - (Instance.Size.Y / 2)
-    )
-end
-
-function DrawingUtility.AddFolder(GetFolder)
-    local Folder = isfolder and isfolder(GetFolder)
-    if Folder then
-        return
-    else
-        if makefolder then
-            makefolder(GetFolder)
-            return true
-        end
-    end
-end
-
-function DrawingUtility.AddImage(Image, Url)
-    local ImageFile = nil
-    if isfile and isfile(Image) then
-        ImageFile = readfile(Image)
-    else
-        ImageFile = game:HttpGet(Url)
-        if writefile then
-            writefile(Image, ImageFile)
-        end
-    end
-    return ImageFile
-end
-
--- 13block Loading Screen Function
 function Library:CreateLoader(Title, WindowSize)
+    WindowSize = WindowSize or UDim2.fromOffset(400, 250)
+    
     local Window = {
-        Max = 2, Current = 0
+        Max = 4, 
+        Current = 0
     }
     
-    -- Set default window size
-    WindowSize = WindowSize or Vector2.new(400, 300)
-    
-    -- Create folders first
-    LoadingUtility.AddFolder("13block")
-    LoadingUtility.AddFolder("13block/Assets")
-    LoadingUtility.AddFolder("13block/Assets/UI")
-    
-    -- Load logo (13block version)
-    local Logo = DrawingUtility.AddImage("13block/Assets/UI/Logo2.png", "https://i.imgur.com/HI4UTmZ.png")
-    
-    -- Create loading window using Instance API
+    -- Create loading window
     local WindowOutline = LoadingUtility.AddInstance("Frame", {
         Name = "LoadingWindow",
-        Size = UDim2.fromOffset(WindowSize.X, WindowSize.Y),
-        Position = LoadingUtility.MiddlePos(WindowSize),
+        Size = WindowSize,
+        Position = LoadingUtility.MiddlePos({Size = WindowSize}),
         BackgroundColor3 = Library.OutlineColor,
         BorderSizePixel = 0,
         ZIndex = 1000,
@@ -204,28 +116,11 @@ function Library:CreateLoader(Title, WindowSize)
         Parent = WindowFrame
     })
     
-    -- Logo display (if loaded successfully)
-    local LogoFrame = LoadingUtility.AddInstance("ImageLabel", {
-        Size = UDim2.fromOffset(64, 64),
-        Position = UDim2.new(0.5, -32, 0, 20),
-        BackgroundTransparency = 1,
-        Image = "rbxasset://textures/ui/GuiImagePlaceholder.png", -- Fallback image
-        ZIndex = 1003,
-        Parent = WindowFrame
-    })
-    
-    -- Try to set logo if available
-    if Logo then
-        pcall(function()
-            LogoFrame.Image = Logo
-        end)
-    end
-    
     local WindowTitle = LoadingUtility.AddInstance("TextLabel", {
         Size = UDim2.new(1, 0, 0, 30),
-        Position = UDim2.fromOffset(0, 95),
+        Position = UDim2.fromOffset(0, 10),
         BackgroundTransparency = 1,
-        Text = Title or "13block - Loading...",
+        Text = Title or "Loading...",
         TextColor3 = Library.FontColor,
         TextSize = 16,
         Font = Library.Font,
@@ -234,10 +129,10 @@ function Library:CreateLoader(Title, WindowSize)
         Parent = WindowFrame
     })
     
-    -- Progress bar background
+    -- Progress bar
     local ProgressBarOutline = LoadingUtility.AddInstance("Frame", {
         Size = UDim2.new(0, 300, 0, 20),
-        Position = UDim2.new(0.5, -150, 1, -80),
+        Position = UDim2.new(0.5, -150, 1, -60),
         BackgroundColor3 = Library.OutlineColor,
         BorderSizePixel = 0,
         ZIndex = 1003,
@@ -265,25 +160,11 @@ function Library:CreateLoader(Title, WindowSize)
     -- Status text
     local StatusText = LoadingUtility.AddInstance("TextLabel", {
         Size = UDim2.new(1, 0, 0, 20),
-        Position = UDim2.new(0, 0, 1, -50),
+        Position = UDim2.new(0, 0, 1, -35),
         BackgroundTransparency = 1,
-        Text = "Initializing 13block...",
+        Text = "Initializing...",
         TextColor3 = Library.FontColor,
         TextSize = 14,
-        Font = Library.Font,
-        TextXAlignment = Enum.TextXAlignment.Center,
-        ZIndex = 1003,
-        Parent = WindowFrame
-    })
-    
-    -- Version/branding text
-    local BrandingText = LoadingUtility.AddInstance("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 15),
-        Position = UDim2.new(0, 0, 1, -25),
-        BackgroundTransparency = 1,
-        Text = "13block v1.0 | Premium Experience",
-        TextColor3 = Color3.fromRGB(150, 150, 150),
-        TextSize = 12,
         Font = Library.Font,
         TextXAlignment = Enum.TextXAlignment.Center,
         ZIndex = 1003,
@@ -317,25 +198,27 @@ function Library:CreateLoader(Title, WindowSize)
         end
     end
     
-    -- Auto-run loading sequence with 13block branding (only if no manual control)
-    if not Window.ManualControl then
-        Window:SetProgress(0, "Initializing 13block core...")
-        task.spawn(function()
-            wait(0.5)
-            Window:NextStep("Loading 13block assets...")
-            
-            wait(0.4)
-            Window:NextStep("Preparing interface...")
-            wait(0.4)
-            Window:NextStep("13block ready!")
-            wait(0.5)
-            Window:Destroy()
-            
-            if Library.LoadingComplete then
-                Library.LoadingComplete()
-            end
-        end)
-    end
+    -- Auto-run loading sequence
+    Window:SetProgress(0, "Starting up...")
+    task.spawn(function()
+        wait(0.5)
+        Window:NextStep("Creating directories...")
+        LoadingUtility.AddFolder("LinoriaLib")
+        LoadingUtility.AddFolder("LinoriaLib/Configs")
+        
+        wait(0.3)
+        Window:NextStep("Loading assets...")
+        wait(0.3)
+        Window:NextStep("Initializing interface...")
+        wait(0.3)
+        Window:NextStep("Ready!")
+        wait(0.5)
+        Window:Destroy()
+        
+        if Library.LoadingComplete then
+            Library.LoadingComplete()
+        end
+    end)
     
     return Window
 end

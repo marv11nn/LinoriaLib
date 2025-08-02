@@ -8,6 +8,7 @@ local TweenService = game:GetService('TweenService');
 local RenderStepped = RunService.RenderStepped;
 local LocalPlayer = Players.LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
+local HttpService = game:GetService('HttpService');
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
@@ -44,7 +45,188 @@ local Library = {
 
     Signals = {};
     ScreenGui = ScreenGui;
+    
+    LoadingAssets = {};
 };
+
+-- Loading Screen Functions
+local LoadingUtility = {};
+
+function LoadingUtility.AddInstance(NewInstance, Properties)
+    local Instance = Instance.new(NewInstance)
+    for Index, Value in pairs(Properties) do
+        Instance[Index] = Value
+    end
+    return Instance
+end
+
+function LoadingUtility.MiddlePos(Instance)
+    return UDim2.fromOffset(
+        (workspace.CurrentCamera.ViewportSize.X / 2) - (Instance.Size.X.Offset / 2), 
+        (workspace.CurrentCamera.ViewportSize.Y / 2) - (Instance.Size.Y.Offset / 2)
+    )
+end
+
+function LoadingUtility.AddFolder(GetFolder)
+    local Folder = isfolder and isfolder(GetFolder)
+    if Folder then
+        return
+    else
+        if makefolder then
+            makefolder(GetFolder)
+            return true
+        end
+    end
+end
+
+function Library:CreateLoader(Title, WindowSize)
+    WindowSize = WindowSize or UDim2.fromOffset(400, 250)
+    
+    local Window = {
+        Max = 4, 
+        Current = 0
+    }
+    
+    -- Create loading window
+    local WindowOutline = LoadingUtility.AddInstance("Frame", {
+        Name = "LoadingWindow",
+        Size = WindowSize,
+        Position = LoadingUtility.MiddlePos({Size = WindowSize}),
+        BackgroundColor3 = Library.OutlineColor,
+        BorderSizePixel = 0,
+        ZIndex = 1000,
+        Parent = ScreenGui
+    })
+    
+    local WindowFrame = LoadingUtility.AddInstance("Frame", {
+        Size = UDim2.new(1, -2, 1, -2),
+        Position = UDim2.fromOffset(1, 1),
+        BackgroundColor3 = Library.MainColor,
+        BorderSizePixel = 0,
+        ZIndex = 1001,
+        Parent = WindowOutline
+    })
+    
+    local WindowAccent = LoadingUtility.AddInstance("Frame", {
+        Size = UDim2.new(1, 0, 0, 2),
+        Position = UDim2.fromOffset(0, 0),
+        BackgroundColor3 = Library.AccentColor,
+        BorderSizePixel = 0,
+        ZIndex = 1002,
+        Parent = WindowFrame
+    })
+    
+    local WindowTitle = LoadingUtility.AddInstance("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 30),
+        Position = UDim2.fromOffset(0, 10),
+        BackgroundTransparency = 1,
+        Text = Title or "Loading...",
+        TextColor3 = Library.FontColor,
+        TextSize = 16,
+        Font = Library.Font,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 1003,
+        Parent = WindowFrame
+    })
+    
+    -- Progress bar
+    local ProgressBarOutline = LoadingUtility.AddInstance("Frame", {
+        Size = UDim2.new(0, 300, 0, 20),
+        Position = UDim2.new(0.5, -150, 1, -60),
+        BackgroundColor3 = Library.OutlineColor,
+        BorderSizePixel = 0,
+        ZIndex = 1003,
+        Parent = WindowFrame
+    })
+    
+    local ProgressBarFrame = LoadingUtility.AddInstance("Frame", {
+        Size = UDim2.new(1, -2, 1, -2),
+        Position = UDim2.fromOffset(1, 1),
+        BackgroundColor3 = Library.BackgroundColor,
+        BorderSizePixel = 0,
+        ZIndex = 1004,
+        Parent = ProgressBarOutline
+    })
+    
+    local ProgressBarFill = LoadingUtility.AddInstance("Frame", {
+        Size = UDim2.new(0, 0, 1, 0),
+        Position = UDim2.fromOffset(0, 0),
+        BackgroundColor3 = Library.AccentColor,
+        BorderSizePixel = 0,
+        ZIndex = 1005,
+        Parent = ProgressBarFrame
+    })
+    
+    -- Status text
+    local StatusText = LoadingUtility.AddInstance("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 20),
+        Position = UDim2.new(0, 0, 1, -35),
+        BackgroundTransparency = 1,
+        Text = "Initializing...",
+        TextColor3 = Library.FontColor,
+        TextSize = 14,
+        Font = Library.Font,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ZIndex = 1003,
+        Parent = WindowFrame
+    })
+    
+    function Window:SetProgress(Value, Text)
+        Value = math.clamp(Value, 0, Window.Max)
+        Window.Current = Value
+        
+        local Progress = Value / Window.Max
+        ProgressBarFill:TweenSize(
+            UDim2.new(Progress, 0, 1, 0),
+            "Out", "Quad", 0.3, true
+        )
+        
+        if Text then
+            StatusText.Text = Text
+        end
+        
+        wait(0.1)
+    end
+    
+    function Window:NextStep(Text)
+        Window:SetProgress(Window.Current + 1, Text)
+    end
+    
+    function Window:Destroy()
+        if WindowOutline then
+            WindowOutline:Destroy()
+        end
+    end
+    
+    -- Auto-run loading sequence
+    Window:SetProgress(0, "Starting up...")
+    task.spawn(function()
+        wait(0.5)
+        Window:NextStep("Creating directories...")
+        LoadingUtility.AddFolder("LinoriaLib")
+        LoadingUtility.AddFolder("LinoriaLib/Configs")
+        
+        wait(0.3)
+        Window:NextStep("Loading assets...")
+        wait(0.3)
+        Window:NextStep("Initializing interface...")
+        wait(0.3)
+        Window:NextStep("Ready!")
+        wait(0.5)
+        Window:Destroy()
+        
+        if Library.LoadingComplete then
+            Library.LoadingComplete()
+        end
+    end)
+    
+    return Window
+end
+
+-- Set loading completion callback
+function Library:OnLoadingComplete(Callback)
+    Library.LoadingComplete = Callback
+end
 
 local RainbowStep = 0
 local Hue = 0

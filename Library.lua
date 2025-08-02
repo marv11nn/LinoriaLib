@@ -49,8 +49,9 @@ local Library = {
     LoadingAssets = {};
 };
 
--- Loading Screen Functions
 local LoadingUtility = {};
+local DrawingUtility = {}
+local Drawings = {}
 
 function LoadingUtility.AddInstance(NewInstance, Properties)
     local Instance = Instance.new(NewInstance)
@@ -60,10 +61,25 @@ function LoadingUtility.AddInstance(NewInstance, Properties)
     return Instance
 end
 
--- Add this after line 60 (after the Library table definition)
--- Drawing utility functions (exact from Abyss)
-local DrawingUtility = {}
-local Drawings = {}
+function LoadingUtility.MiddlePos(WindowSize)
+    local ViewportSize = workspace.CurrentCamera.ViewportSize
+    return UDim2.fromOffset(
+        (ViewportSize.X / 2) - (WindowSize.X / 2), 
+        (ViewportSize.Y / 2) - (WindowSize.Y / 2)
+    )
+end
+
+function LoadingUtility.AddFolder(GetFolder)
+    local Folder = isfolder and isfolder(GetFolder)
+    if Folder then
+        return
+    else
+        if makefolder then
+            makefolder(GetFolder)
+            return true
+        end
+    end
+end
 
 function DrawingUtility.AddDrawing(Instance, Properties)
     local InstanceType = Instance
@@ -142,30 +158,7 @@ function DrawingUtility.AddImage(Image, Url)
     return ImageFile
 end
 
--- Replace the LoadingUtility.MiddlePos function with this corrected version:
-
-function LoadingUtility.MiddlePos(WindowSize)
-    local ViewportSize = workspace.CurrentCamera.ViewportSize
-    return UDim2.fromOffset(
-        (ViewportSize.X / 2) - (WindowSize.X / 2), 
-        (ViewportSize.Y / 2) - (WindowSize.Y / 2)
-    )
-end
-
--- Also update the LoadingUtility.AddFolder function to match DrawingUtility:
-
-function LoadingUtility.AddFolder(GetFolder)
-    local Folder = isfolder and isfolder(GetFolder)
-    if Folder then
-        return
-    else
-        if makefolder then
-            makefolder(GetFolder)
-            return true
-        end
-    end
-end
-
+-- 13block Loading Screen Function
 function Library:CreateLoader(Title, WindowSize)
     local Window = {
         Max = 2, Current = 0
@@ -175,18 +168,18 @@ function Library:CreateLoader(Title, WindowSize)
     WindowSize = WindowSize or Vector2.new(400, 300)
     
     -- Create folders first
-    DrawingUtility.AddFolder("13block")
-    DrawingUtility.AddFolder("13block/Assets")
-    DrawingUtility.AddFolder("13block/Assets/UI")
+    LoadingUtility.AddFolder("13block")
+    LoadingUtility.AddFolder("13block/Assets")
+    LoadingUtility.AddFolder("13block/Assets/UI")
     
     -- Load logo (13block version)
     local Logo = DrawingUtility.AddImage("13block/Assets/UI/Logo2.png", "https://i.imgur.com/HI4UTmZ.png")
     
-    -- Create loading window using Instance API (not Drawing API for better compatibility)
+    -- Create loading window using Instance API
     local WindowOutline = LoadingUtility.AddInstance("Frame", {
         Name = "LoadingWindow",
         Size = UDim2.fromOffset(WindowSize.X, WindowSize.Y),
-        Position = LoadingUtility.MiddlePos({Size = {X = {Offset = WindowSize.X}, Y = {Offset = WindowSize.Y}}}),
+        Position = LoadingUtility.MiddlePos(WindowSize),
         BackgroundColor3 = Library.OutlineColor,
         BorderSizePixel = 0,
         ZIndex = 1000,
@@ -324,29 +317,32 @@ function Library:CreateLoader(Title, WindowSize)
         end
     end
     
-    -- Auto-run loading sequence with 13block branding
-    Window:SetProgress(0, "Initializing 13block core...")
-    task.spawn(function()
-        wait(0.5)
-        Window:NextStep("Loading 13block assets...")
-        
-        -- Create directories
-        LoadingUtility.AddFolder("13block")
-        LoadingUtility.AddFolder("13block/Configs")
-        
-        wait(0.4)
-        Window:NextStep("Preparing interface...")
-        wait(0.4)
-        Window:NextStep("13block ready!")
-        wait(0.5)
-        Window:Destroy()
-        
-        if Library.LoadingComplete then
-            Library.LoadingComplete()
-        end
-    end)
+    -- Auto-run loading sequence with 13block branding (only if no manual control)
+    if not Window.ManualControl then
+        Window:SetProgress(0, "Initializing 13block core...")
+        task.spawn(function()
+            wait(0.5)
+            Window:NextStep("Loading 13block assets...")
+            
+            wait(0.4)
+            Window:NextStep("Preparing interface...")
+            wait(0.4)
+            Window:NextStep("13block ready!")
+            wait(0.5)
+            Window:Destroy()
+            
+            if Library.LoadingComplete then
+                Library.LoadingComplete()
+            end
+        end)
+    end
     
     return Window
+end
+
+-- Set loading completion callback
+function Library:OnLoadingComplete(Callback)
+    Library.LoadingComplete = Callback
 end
 
 local RainbowStep = 0
